@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>オセロゲーム</title>
+    <style>
+        .board {
+            display: grid;
+            grid-template-columns: repeat(8, 50px);
+            gap: 2px;
+            background: #008000;
+            padding: 10px;
+            margin: 20px auto;
+        }
+
+        .cell {
+            width: 50px;
+            height: 50px;
+            background: #008000;
+
+            border: 1px solid #000;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .disc {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            position: absolute;
+            top: 5px;
+            left: 5px;
+        }
+
+        .black {
+            background: #000;
+        }
+
+        .white {
+            background: #fff;
+        }
+
+        .valid-move {
+            background: rgba(0, 255, 0, 0.3);
+        }
+
+        .container {
+            text-align: center;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .controls {
+            margin: 20px;
+        }
+
+        .home-button {
+            display: none;
+            padding: 10px 20px;
+            font-size: 1.2rem;
+            color: white;
+            background: #2c3e50;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            margin: 20px auto;
+        }
+
+        .home-button:hover {
+            background: #34495e;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>オセロゲーム</h1>
+
+        <div class="controls">
+            <button onclick="startGame('human')">対人戦</button>
+            <button onclick="startGame('cpu')">CPU対戦</button>
+            <div id="colorSelect" style="display:none">
+                <p>色を選んでください：</p>
+                <button onclick="selectColor('black')">黒（先手）</button>
+                <button onclick="selectColor('white')">白（後手）</button>
+            </div>
+        </div>
+
+        <div id="board" class="board"></div>
+        <div id="status"></div>
+        <button id="homeButton" class="home-button" onclick="location.href='index.html'">ホームに戻る</button>
+    </div>
+
+    <script>
+        let board = Array(8).fill().map(() => Array(8).fill(null));
+        let currentPlayer = 'black';
+        let gameMode = null;
+        let playerColor = null;
+        let cpuColor = null;
+        let isCpuMakingMove = false;
+
+        function initializeBoard() {
+            board = Array(8).fill().map(() => Array(8).fill(null));
+            board[3][3] = board[4][4] = 'white';
+            board[3][4] = board[4][3] = 'black';
+            currentPlayer = 'black';
+            renderBoard();
+        }
+
+        function startGame(mode) {
+            gameMode = mode;
+            if (mode === 'cpu') {
+                document.getElementById('colorSelect').style.display = 'block';
+            } else {
+                playerColor = null;
+                cpuColor = null;
+                initializeBoard();
+            }
+        }
+
+        function selectColor(color) {
+            playerColor = color;
+            cpuColor = color === 'black' ? 'white' : 'black';
+            document.getElementById('colorSelect').style.display = 'none';
+            initializeBoard();
+            if (cpuColor === 'black') {
+                setTimeout(cpuMoveWrapper, 1000);
+            }
+        }
+
+        function renderBoard() {
+            const boardElement = document.getElementById('board');
+            boardElement.innerHTML = '';
+
+            for (let i = 0; i < 8; i++) {
+                for (let j = 0; j < 8; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    if (board[i][j]) {
+                        const disc = document.createElement('div');
+                        disc.className = `disc ${board[i][j]}`;
+                        cell.appendChild(disc);
+                    }
+
+                    if (isValidMove(i, j, currentPlayer)) {
+                        cell.classList.add('valid-move');
+                    }
+
+                    cell.onclick = () => makeMove(i, j);
+                    boardElement.appendChild(cell);
+                }
+            }
+
+            updateStatus();
+        }
+
+        function isValidMove(row, col, player) {
+            if (board[row][col]) return false;
+
+            const opponent = player === 'black' ? 'white' : 'black';
+            const directions = [
+                [-1, -1], [-1, 0], [-1, 1],
+                [0, -1], [0, 1],
+                [1, -1], [1, 0], [1, 1]
+            ];
+
+            return directions.some(([dx, dy]) => {
+                let x = row + dx;
+                let y = col + dy;
+                let foundOpponent = false;
+
+                while (x >= 0 && x < 8 && y >= 0 && y < 8) {
+                    if (!board[x][y]) return false;
+                    if (board[x][y] === opponent) foundOpponent = true;
+                    if (board[x][y] === player) return foundOpponent;
+                    x += dx;
+                    y += dy;
+                }
+                return false;
+            });
+        }
+
+        function flipDiscs(row, col, player) {
+            const opponent = player === 'black' ? 'white' : 'black';
+            const directions = [
+                [-1, -1], [-1, 0], [-1, 1],
+                [0, -1], [0, 1],
+                [1, -1], [1, 0], [1, 1]
+            ];
+
+            directions.forEach(([dx, dy]) => {
+                let x = row + dx;
+                let y = col + dy;
+                let toFlip = [];
+
+                while (x >= 0 && x < 8 && y >= 0 && y < 8 && board[x][y] === opponent) {
+                    toFlip.push([x, y]);
+                    x += dx;
+                    y += dy;
+                }
+
+                if (x >= 0 && x < 8 && y >= 0 && y < 8 && board[x][y] === player) {
+                    toFlip.forEach(([fx, fy]) => board[fx][fy] = player);
+                }
+            });
+        }
+
+        function makeMove(row, col) {
+            if (!isCpuMakingMove && gameMode === 'cpu' && currentPlayer === cpuColor) {
+                console.log("Player tried to move during CPU turn. Ignored.");
+                return;
+            }
+            if (isCpuMakingMove) {
+                isCpuMakingMove = false;
+            }
+
+            if (!isValidMove(row, col, currentPlayer)) {
+                console.log(`Invalid move attempted at (${row}, ${col}) by ${currentPlayer}`);
+                return;
+            }
+
+            board[row][col] = currentPlayer;
+            flipDiscs(row, col, currentPlayer);
+            const previousPlayer = currentPlayer;
+            currentPlayer = currentPlayer === 'black' ? 'white' : 'black';
+            renderBoard();
+
+            if (previousPlayer !== cpuColor && gameMode === 'cpu' && currentPlayer === cpuColor) {
+                setTimeout(cpuMoveWrapper, 1000);
+            }
+        }
+
+        function findBestCpuMove() {
+            let bestMove = null;
+            let bestScore = -Infinity;
+
+            for (let i = 0; i < 8; i++) {
+                for (let j = 0; j < 8; j++) {
+                    if (isValidMove(i, j, cpuColor)) {
+                        const score = evaluateMove(i, j);
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestMove = [i, j];
+                        }
+                    }
+                }
+            }
+
+            return bestMove;
+        }
+
+        function cpuMoveWrapper() {
+            const bestMove = findBestCpuMove();
+
+            if (bestMove) {
+                console.log(`CPU found best move: (${bestMove[0]}, ${bestMove[1]})`);
+                isCpuMakingMove = true;
+                makeMove(bestMove[0], bestMove[1]);
+            } else {
+                console.log("CPU cannot move, passing turn.");
+                currentPlayer = playerColor;
+
+                if (!canMove(playerColor)) {
+                    console.log("Player also cannot move. Game potentially over.");
+                } else {
+                    console.log("Player turn.");
+                }
+                renderBoard();
+            }
+        }
+
+        function evaluateMove(row, col) {
+            if ((row === 0 || row === 7) && (col === 0 || col === 7)) return 100;
+            if (row === 0 || row === 7 || col === 0 || col === 7) return 50;
+            return 10;
+        }
+
+        function updateStatus() {
+            const statusElement = document.getElementById('status');
+            const blackCount = board.flat().filter(cell => cell === 'black').length;
+            const whiteCount = board.flat().filter(cell => cell === 'white').length;
+
+            statusElement.textContent = `黒: ${blackCount} 白: ${whiteCount} | 現在の手番: ${currentPlayer === 'black' ? '黒' : '白'}`;
+
+            if (!canMove('black') && !canMove('white')) {
+                const winner = blackCount > whiteCount ? '黒' : whiteCount > blackCount ? '白' : '引き分け';
+                statusElement.textContent += ` | ゲーム終了 - ${winner}の勝ち！`;
+                document.getElementById('homeButton').style.display = 'block';
+            }
+        }
+
+        function canMove(player) {
+            for (let i = 0; i < 8; i++) {
+                for (let j = 0; j < 8; j++) {
+                    if (isValidMove(i, j, player)) return true;
+                }
+            }
+            return false;
+        }
+
+        initializeBoard();
+    </script>
+</body>
+
+</html>
