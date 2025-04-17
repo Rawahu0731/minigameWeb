@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ホーム</title>
+    <link rel="manifest" href="../manifest.json">
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -50,6 +51,16 @@
     </style>
 </head>
 <body>
+    <script>
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register('../sw.js').then(registration => {
+            console.log('ServiceWorker registration successful.');
+          }).catch(err => {
+            console.log('ServiceWorker registration failed.');
+          });
+        }
+      </script>
+      
     <div class="container">
         <h1>ミニゲームコレクション</h1>
         <a href="Othello.html" class="game-button">オセロゲーム</a>
