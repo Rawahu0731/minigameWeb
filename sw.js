@@ -29,10 +29,31 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('fetch', (event) => {
   event.respondWith(
-    caches
-      .match(event.request)
-      .then((response) => {
-        return response ? response : fetch(event.request);
+    caches.match(event.request)
+      .then(response => {
+        if (response) {
+          return response;
+        }
+
+        // リクエストのクローンを作成
+        const fetchRequest = event.request.clone();
+
+        return fetch(fetchRequest).then(response => {
+          // レスポンスが有効でない場合は、そのまま返す
+          if (!response || response.status !== 200 || response.type !== 'basic') {
+            return response;
+          }
+
+          // レスポンスのクローンを作成
+          const responseToCache = response.clone();
+
+          caches.open(CACHE_NAME)
+            .then(cache => {
+              cache.put(event.request, responseToCache);
+            });
+
+          return response;
+        });
       })
   );
 });
