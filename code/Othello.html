@@ -94,7 +94,7 @@
 
         <div id="board" class="board"></div>
         <div id="status"></div>
-        <button id="homeButton" class="home-button" onclick="location.href='index.html'">ホームに戻る</button>
+        <button id="resetButton" class="home-button" onclick="resetGame()">ゲームをリセット</button>
     </div>
 
     <script>
@@ -291,7 +291,7 @@
             if (!canMove('black') && !canMove('white')) {
                 const winner = blackCount > whiteCount ? '黒' : whiteCount > blackCount ? '白' : '引き分け';
                 statusElement.textContent += ` | ゲーム終了 - ${winner}の勝ち！`;
-                document.getElementById('homeButton').style.display = 'block';
+                document.getElementById('resetButton').style.display = 'block';
             }
         }
 
@@ -302,6 +302,18 @@
                 }
             }
             return false;
+        }
+
+        function resetGame() {
+            if (gameMode === 'cpu') {
+                initializeBoard();
+                if (cpuColor === 'black') {
+                    setTimeout(cpuMoveWrapper, 1000);
+                }
+            } else {
+                initializeBoard();
+            }
+            document.getElementById('resetButton').style.display = 'none';
         }
 
         initializeBoard();
