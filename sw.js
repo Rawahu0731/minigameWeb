@@ -2,10 +2,10 @@
 const CACHE_NAME = 'othello-game-cache-v1';
 // Cache targets
 const urlsToCache = [
-  './',
-  './code/Othello.html',
-  './images/970_mo_h.png',
-  './manifest.json'
+  '/',
+  '/code/Othello.html',
+  '/images/970_mo_h.png',
+  '/manifest.json'
 ];
 
 self.addEventListener('install', (event) => {
@@ -40,7 +40,7 @@ self.addEventListener('fetch', (event) => {
           return response;
         }
 
-        return fetch(event.request)
+        return fetch(event.request.clone())
           .then(response => {
             if (!response || response.status !== 200 || response.type !== 'basic') {
               return response;
@@ -55,8 +55,7 @@ self.addEventListener('fetch', (event) => {
             return response;
           })
           .catch(() => {
-            // オフライン時のフォールバック
-            return new Response('オフラインです。インターネット接続を確認してください。');
+            return caches.match('/code/Othello.html');
           });
       })
   );

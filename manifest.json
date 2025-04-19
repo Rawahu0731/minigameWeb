@@ -1,6 +1,6 @@
 {
     "name": "OthelloGame",
-    "short_name": "Othello",
+    "short_name": "Othello.html",
     "theme_color": "#2196f3",
     "background_color": "#2196f3",
     "display": "standalone",
