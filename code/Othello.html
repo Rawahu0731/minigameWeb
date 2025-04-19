@@ -5,6 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>オセロゲーム</title>
+    <link rel="manifest" href="../manifest.json">
+    <meta name="theme-color" content="#2196f3">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="オセロゲーム">
+    <link rel="apple-touch-icon" href="../images/970_mo_h.png">
     <style>
         .board {
             display: grid;
@@ -98,6 +104,19 @@
     </div>
 
     <script>
+        // Service Workerの登録
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('../sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registration successful');
+                    })
+                    .catch(err => {
+                        console.log('ServiceWorker registration failed', err);
+                    });
+            });
+        }
+
         let board = Array(8).fill().map(() => Array(8).fill(null));
         let currentPlayer = 'black';
         let gameMode = null;
