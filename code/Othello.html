@@ -3,14 +3,17 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>オセロゲーム</title>
     <link rel="manifest" href="../manifest.json">
     <meta name="theme-color" content="#2196f3">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <meta name="apple-mobile-web-app-title" content="オセロゲーム">
+    <meta name="apple-mobile-web-app-title" content="オセロ">
     <link rel="apple-touch-icon" href="../images/970_mo_h.png">
+    <link rel="apple-touch-startup-image" href="../images/970_mo_h.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="オセロ">
     <style>
         .board {
             display: grid;
@@ -91,6 +94,7 @@
         <div class="controls">
             <button onclick="startGame('human')">対人戦</button>
             <button onclick="startGame('cpu')">CPU対戦</button>
+            <button onclick="updateServiceWorker()" style="margin-left: 10px; font-size: 0.8em;">キャッシュ更新</button>
             <div id="colorSelect" style="display:none">
                 <p>色を選んでください：</p>
                 <button onclick="selectColor('black')">黒（先手）</button>
@@ -108,12 +112,30 @@
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', async () => {
                 try {
-                    const registration = await navigator.serviceWorker.register('/sw.js');
+                    const registration = await navigator.serviceWorker.register('../sw.js', {
+                        scope: '../'
+                    });
                     console.log('ServiceWorker registration successful with scope:', registration.scope);
                 } catch (err) {
                     console.error('ServiceWorker registration failed:', err);
                 }
             });
+        }
+
+        // Service Worker更新関数
+        async function updateServiceWorker() {
+            if ('serviceWorker' in navigator) {
+                try {
+                    const registration = await navigator.serviceWorker.getRegistration();
+                    if (registration) {
+                        await registration.update();
+                        alert('キャッシュを更新しました。変更を適用するには、ページを再読み込みしてください。');
+                    }
+                } catch (err) {
+                    console.error('ServiceWorker update failed:', err);
+                    alert('キャッシュの更新に失敗しました。');
+                }
+            }
         }
 
         let board = Array(8).fill().map(() => Array(8).fill(null));

@@ -1,15 +1,18 @@
 {
     "name": "OthelloGame",
-    "short_name": "Othello.html",
+    "short_name": "Othello",
     "theme_color": "#2196f3",
     "background_color": "#2196f3",
     "display": "standalone",
-    "start_url": "code/Othello.html",
+    "orientation": "any",
+    "start_url": "./code/Othello.html",
+    "scope": "./",
     "icons": [
       {
         "src": "images/970_mo_h.png",
         "sizes": "192x192",
-        "type": "image/png"
+        "type": "image/png",
+        "purpose": "any"
       }
     ]
   }
