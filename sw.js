@@ -1,30 +1,34 @@
 // Cache name
-const CACHE_NAME = 'othello-game-cache-v3';
+const CACHE_NAME = 'othello-game-cache-v5';
 // Cache targets
 const urlsToCache = [
   '',
   'code/Othello.html',
   'images/970_mo_h.png',
-  'manifest.json',
-  '.'
+  'manifest.json'
 ];
 
-// 相対パスを絶対パスに変換する関数
-function getAbsolutePath(url) {
-  const base = self.registration.scope;
-  return new URL(url, base).href;
+// キャッシュの内容を確認する関数
+async function inspectCache() {
+  const cache = await caches.open(CACHE_NAME);
+  const keys = await cache.keys();
+  console.log('現在のキャッシュ内容:');
+  for (const request of keys) {
+    console.log('- ', request.url);
+  }
 }
 
 self.addEventListener('install', (event) => {
+  console.log('Service Worker installing...');
   self.skipWaiting();
   event.waitUntil(
     caches
       .open(CACHE_NAME)
-      .then((cache) => {
-        console.log('Opened cache');
-        // URLを絶対パスに変換してキャッシュ
-        const urlsToCache_abs = urlsToCache.map(url => getAbsolutePath(url));
-        return cache.addAll(urlsToCache_abs);
+      .then(async (cache) => {
+        console.log('Cache opened, adding files...');
+        await cache.addAll(urlsToCache);
+        console.log('All files cached successfully');
+        await inspectCache();
       })
       .catch((err) => {
         console.error('Cache installation failed:', err);
@@ -33,7 +37,7 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  // 即座にコントロールを開始
+  console.log('Service Worker activating...');
   event.waitUntil(
     Promise.all([
       self.clients.claim(),
@@ -41,51 +45,55 @@ self.addEventListener('activate', (event) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
             if (cacheName !== CACHE_NAME) {
+              console.log('Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
           })
         );
-      })
-    ])
+      }),
+      inspectCache()
+    ]).then(() => {
+      console.log('Service Worker activated and controlling the page');
+    })
   );
 });
 
 self.addEventListener('fetch', (event) => {
+  console.log('Fetch request for:', event.request.url);
+  
   event.respondWith(
     caches.match(event.request)
-      .then(response => {
+      .then(async (response) => {
         if (response) {
+          console.log('Found in cache:', event.request.url);
           return response;
         }
+        
+        console.log('Not found in cache, fetching:', event.request.url);
+        try {
+          const fetchResponse = await fetch(event.request);
+          if (!fetchResponse || fetchResponse.status !== 200 || fetchResponse.type !== 'basic') {
+            return fetchResponse;
+          }
 
-        const fetchRequest = event.request.clone();
-
-        return fetch(fetchRequest)
-          .then(response => {
-            if (!response || response.status !== 200 || response.type !== 'basic') {
-              return response;
-            }
-
-            const responseToCache = response.clone();
-            caches.open(CACHE_NAME)
-              .then(cache => {
-                cache.put(event.request, responseToCache)
-                  .catch(err => {
-                    console.error('Cache put failed:', err);
-                  });
-              });
-
-            return response;
-          })
-          .catch(() => {
-            // メインページへのフォールバック
-            return caches.match('./code/Othello.html')
-              .then(response => {
-                return response || new Response('オフラインです。再度オンライン時にアクセスしてください。', {
-                  headers: { 'Content-Type': 'text/html;charset=utf-8' }
-                });
-              });
+          const responseToCache = fetchResponse.clone();
+          const cache = await caches.open(CACHE_NAME);
+          console.log('Caching new resource:', event.request.url);
+          await cache.put(event.request, responseToCache);
+          await inspectCache();
+          
+          return fetchResponse;
+        } catch (err) {
+          console.error('Fetch failed:', err);
+          const fallbackResponse = await caches.match('code/Othello.html');
+          if (fallbackResponse) {
+            console.log('Using fallback from cache');
+            return fallbackResponse;
+          }
+          return new Response('オフラインです。再度オンライン時にアクセスしてください。', {
+            headers: { 'Content-Type': 'text/html;charset=utf-8' }
           });
+        }
       })
   );
 });

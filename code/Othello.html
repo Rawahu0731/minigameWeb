@@ -108,32 +108,109 @@
     </div>
 
     <script>
-        // Service Workerの登録
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', async () => {
+        // Service Worker登録とデバッグ
+        async function registerAndDebugServiceWorker() {
+            if ('serviceWorker' in navigator) {
                 try {
+                    // 既存のService Workerの確認
+                    const existingRegistration = await navigator.serviceWorker.getRegistration();
+                    if (existingRegistration) {
+                        console.log('既存のService Worker:', existingRegistration);
+                        console.log('状態:', {
+                            installing: existingRegistration.installing ? 'インストール中' : null,
+                            waiting: existingRegistration.waiting ? '待機中' : null,
+                            active: existingRegistration.active ? 'アクティブ' : null
+                        });
+                    }
+
+                    // 新しいService Workerの登録
+                    console.log('Service Workerの登録を開始...');
                     const registration = await navigator.serviceWorker.register('../sw.js', {
                         scope: '../'
                     });
-                    console.log('ServiceWorker registration successful with scope:', registration.scope);
+                    console.log('Service Worker登録成功:', registration);
+
+                    // キャッシュの確認
+                    const cacheKeys = await caches.keys();
+                    console.log('現在のキャッシュ一覧:', cacheKeys);
+
+                    // 各キャッシュの中身を確認
+                    for (const key of cacheKeys) {
+                        const cache = await caches.open(key);
+                        const requests = await cache.keys();
+                        console.log(`キャッシュ "${key}" の内容:`, requests.map(req => req.url));
+                    }
+
+                    // Service Workerの状態変更を監視
+                    registration.addEventListener('statechange', (event) => {
+                        console.log('Service Worker状態変更:', event.target.state);
+                    });
+
+                    // 新しいService Workerの監視
+                    registration.addEventListener('updatefound', () => {
+                        const newWorker = registration.installing;
+                        console.log('新しいService Workerを検出:', newWorker);
+
+                        newWorker.addEventListener('statechange', () => {
+                            console.log('新しいService Worker状態:', newWorker.state);
+                        });
+                    });
+
+                    // 制御状態の変更を監視
+                    navigator.serviceWorker.addEventListener('controllerchange', () => {
+                        console.log('Service Worker制御状態が変更されました');
+                    });
+
+                    // メッセージの受信を監視
+                    navigator.serviceWorker.addEventListener('message', (event) => {
+                        console.log('Service Workerからメッセージを受信:', event.data);
+                    });
+
                 } catch (err) {
-                    console.error('ServiceWorker registration failed:', err);
+                    console.error('Service Worker登録エラー:', err);
+                    alert('Service Workerの登録に失敗しました: ' + err.message);
                 }
-            });
+            } else {
+                console.log('このブラウザはService Workerに対応していません');
+            }
         }
 
-        // Service Worker更新関数
+        // ページ読み込み時にService Workerを登録
+        window.addEventListener('load', registerAndDebugServiceWorker);
+
+        // キャッシュ更新ボタンのハンドラー
         async function updateServiceWorker() {
             if ('serviceWorker' in navigator) {
                 try {
+                    console.log('キャッシュ更新を開始...');
                     const registration = await navigator.serviceWorker.getRegistration();
                     if (registration) {
+                        console.log('現在のService Worker情報:', {
+                            scope: registration.scope,
+                            active: registration.active ? 'アクティブ' : null,
+                            installing: registration.installing ? 'インストール中' : null,
+                            waiting: registration.waiting ? '待機中' : null
+                        });
+
                         await registration.update();
-                        alert('キャッシュを更新しました。変更を適用するには、ページを再読み込みしてください。');
+                        console.log('Service Worker更新完了');
+
+                        const cacheKeys = await caches.keys();
+                        console.log('更新後のキャッシュ一覧:', cacheKeys);
+
+                        if (registration.waiting) {
+                            alert('新しいバージョンがインストールされました。ページを再読み込みして更新を適用してください。');
+                        } else {
+                            alert('キャッシュを更新しました。変更を確認するには、ページを再読み込みしてください。');
+                        }
+                    } else {
+                        console.log('登録済みのService Workerが見つかりません');
+                        // Service Workerを再登録
+                        await registerAndDebugServiceWorker();
                     }
                 } catch (err) {
-                    console.error('ServiceWorker update failed:', err);
-                    alert('キャッシュの更新に失敗しました。');
+                    console.error('キャッシュ更新エラー:', err);
+                    alert('更新に失敗しました: ' + err.message);
                 }
             }
         }
